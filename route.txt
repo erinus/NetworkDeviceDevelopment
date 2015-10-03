@@ -1,0 +1,5 @@
+CLIENT of VMnet2
+sudo ip route add 192.168.103.0/24 via 192.168.102.128
+
+CLIENT of VMnet3
+sudo ip route add 192.168.102.0/24 via 192.168.103.128
