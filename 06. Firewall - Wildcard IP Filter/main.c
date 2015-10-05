@@ -8,6 +8,54 @@
 #include <net/ip.h>
 #include <net/tcp.h>
 
+unsigned int inet_addr(char *str) {
+	int a, b, c, d;
+	char arr[4];
+	sscanf(str, "%d.%d.%d.%d", &a, &b, &c, &d);
+	arr[0] = a;
+	arr[1] = b;
+	arr[2] = c;
+	arr[3] = d;
+	return *(unsigned int*)arr;
+}
+
+unsigned int rule_scan(unsigned int addr, char *rule) {
+	unsigned int result = 1;
+	int a, b, c, d;
+	char data[16];
+	int i, offset;
+	memset(data, 0, 16);
+	sprintf(
+		data, "%d.%d.%d.%d",
+		(addr >> 0) & 0xFF, (addr >> 8) & 0xFF,
+		(addr >> 16) & 0xFF, (addr >> 24) & 0xFF
+	);
+	offset = 0;
+	for (i = 0; i < strlen(rule); i++)
+	{
+		if (rule[i] == '\0' || data[i + offset] == '\0') {
+			break;
+		}
+		if (rule[i] != data[i + offset]) {
+			if (rule[i] == '*' &&
+				data[i + offset] >= '0' &&
+				data[i + offset] <= '9'
+			) {
+				i--;
+				offset++;
+				continue;
+			}
+			if (rule[i] == '*' && data[i + offset] == '.' ) {
+				i++;
+				continue;
+			}
+			result = 0;
+			break;
+		}
+	}
+	return result;
+}
+
 static unsigned int switch_hook_forward(
 	unsigned int hook,
 	struct sk_buff *skb,
@@ -23,18 +71,10 @@ static unsigned int switch_hook_forward(
 	if (eth_header->h_proto == 0x0008) {
 		struct iphdr *ip_header = ip_hdr(skb);
 		if (ip_header->protocol == IPPROTO_TCP) {
-			unsigned int ip_header_length = ip_hdrlen(skb);
-			skb_pull(skb, ip_header_length);
-			//   layer 3   //
-			//-------------// skb->data
-			//   layer 4   //
-			skb_reset_transport_header(skb);
-			skb_push(skb, ip_header_length);
-			//   layer 2   //
-			//-------------// skb->data
-			//   layer 3   //
-			struct tcphdr *tcp_header = tcp_hdr(skb);
-			if (ntohs(tcp_header->source) == 80 || ntohs(tcp_header->dest) == 80) {
+			char *rule = "192.168.103.*";
+			if (rule_scan(ip_header->saddr, rule) ||
+				rule_scan(ip_header->daddr, rule)
+			) {
 				result = NF_DROP;
 			}
 		}

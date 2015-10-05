@@ -8,6 +8,17 @@
 #include <net/ip.h>
 #include <net/tcp.h>
 
+unsigned int inet_addr(char *str) {
+	int a, b, c, d;
+	char arr[4];
+	sscanf(str, "%d.%d.%d.%d", &a, &b, &c, &d);
+	arr[0] = a;
+	arr[1] = b;
+	arr[2] = c;
+	arr[3] = d;
+	return *(unsigned int*)arr;
+}
+
 static unsigned int switch_hook_forward(
 	unsigned int hook,
 	struct sk_buff *skb,
@@ -22,21 +33,10 @@ static unsigned int switch_hook_forward(
 	struct ethhdr *eth_header = eth_hdr(skb);
 	if (eth_header->h_proto == 0x0008) {
 		struct iphdr *ip_header = ip_hdr(skb);
-		if (ip_header->protocol == IPPROTO_TCP) {
-			unsigned int ip_header_length = ip_hdrlen(skb);
-			skb_pull(skb, ip_header_length);
-			//   layer 3   //
-			//-------------// skb->data
-			//   layer 4   //
-			skb_reset_transport_header(skb);
-			skb_push(skb, ip_header_length);
-			//   layer 2   //
-			//-------------// skb->data
-			//   layer 3   //
-			struct tcphdr *tcp_header = tcp_hdr(skb);
-			if (ntohs(tcp_header->source) == 80 || ntohs(tcp_header->dest) == 80) {
-				result = NF_DROP;
-			}
+		if (ip_header->saddr == inet_addr("192.168.103.128") ||
+			ip_header->daddr == inet_addr("192.168.103.128")
+		) {
+			result = NF_DROP;
 		}
 	}
 	//   layer 2   //
