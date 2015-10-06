@@ -20,24 +20,26 @@ static unsigned int switch_hook_forward(
 	//   layer 3   //
 	unsigned int result = NF_ACCEPT;
 	struct ethhdr *eth_header = eth_hdr(skb);
-	if (eth_header->h_proto == ETH_P_IP) {
-		struct iphdr *ip_header = ip_hdr(skb);
-		if (ip_header->protocol == IPPROTO_TCP) {
-			unsigned int ip_header_length = ip_hdrlen(skb);
-			skb_pull(skb, ip_header_length);
-			//   layer 3   //
-			//-------------// skb->data
-			//   layer 4   //
-			skb_reset_transport_header(skb);
-			skb_push(skb, ip_header_length);
-			//   layer 2   //
-			//-------------// skb->data
-			//   layer 3   //
-			struct tcphdr *tcp_header = tcp_hdr(skb);
-			if (ntohs(tcp_header->source) == 80 || ntohs(tcp_header->dest) == 80) {
-				result = NF_DROP;
+	switch (ntohs(eth_header->h_proto)) {
+		case ETH_P_IP:
+			struct iphdr *ip_header = ip_hdr(skb);
+			switch (ntohs(ip_header->protocol)) {
+				case IPPROTO_ICMP:	// ICMP (PING)
+					break;
+				case IPPROTO_TCP:	// TCP
+					break;
+				case IPPROTO_UDP:	// UDP
+					break;
+				case IPPROTO_ESP:	// IPSec
+					break;
+				case IPPROTO_AH:	// IPSec
+					break;
 			}
-		}
+			break;
+		case ETH_P_ARP:				// ARP
+			break;
+		case ETH_P_PPP_SES:			// PPPoE
+			break;
 	}
 	//   layer 2   //
 	//-------------// skb->data

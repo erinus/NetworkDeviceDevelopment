@@ -68,7 +68,7 @@ static unsigned int switch_hook_forward(
 	//   layer 3   //
 	unsigned int result = NF_ACCEPT;
 	struct ethhdr *eth_header = eth_hdr(skb);
-	if (eth_header->h_proto == 0x0008) {
+	if (eth_header->h_proto == ETH_P_IP) {
 		struct iphdr *ip_header = ip_hdr(skb);
 		if (ip_header->protocol == IPPROTO_TCP) {
 			char *rule = "192.168.103.*";

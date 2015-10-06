@@ -8,6 +8,27 @@
 #include <net/ip.h>
 #include <net/tcp.h>
 
+void tcp_send_check(struct sk_buff *skb) {
+	if (skb_is_nonlinear(skb)) {
+		skb_linearize(skb);
+	}
+	struct iphdr *ip_header = ip_hdr(skb);
+	struct tcphdr *tcp_header = tcp_hdr(skb);
+	unsigned int tcp_header_length = (skb->len - (ip_header->ihl << 2));
+	tcp_header->check = 0;
+	tcp_header->check = tcp_v4_check(
+		tcp_header_length,
+		ip_header->saddr,
+		ip_header->daddr,
+		csum_partial(
+			(char*)tcp_header,
+			tcp_header_length,
+			0
+		)
+	);
+	skb->ip_summed = CHECKSUM_NONE;
+}
+
 static unsigned int switch_hook_forward(
 	unsigned int hook,
 	struct sk_buff *skb,
@@ -20,10 +41,11 @@ static unsigned int switch_hook_forward(
 	//   layer 3   //
 	unsigned int result = NF_ACCEPT;
 	struct ethhdr *eth_header = eth_hdr(skb);
-	if (eth_header->h_proto == ETH_P_IP) {
+	if (ntohs(eth_header->h_proto) == ETH_P_IP) {
 		struct iphdr *ip_header = ip_hdr(skb);
+		unsigned int ip_header_length = ip_hdrlen(skb);
+		unsigned int ip_packet_length = ntohs(ip_header->tot_len);
 		if (ip_header->protocol == IPPROTO_TCP) {
-			unsigned int ip_header_length = ip_hdrlen(skb);
 			skb_pull(skb, ip_header_length);
 			//   layer 3   //
 			//-------------// skb->data
@@ -34,8 +56,20 @@ static unsigned int switch_hook_forward(
 			//-------------// skb->data
 			//   layer 3   //
 			struct tcphdr *tcp_header = tcp_hdr(skb);
-			if (ntohs(tcp_header->source) == 80 || ntohs(tcp_header->dest) == 80) {
-				result = NF_DROP;
+			unsigned char *payload = (unsigned char *)ip_header + ip_header_length;
+			int i;
+			for (i = 0; i < ip_packet_length - ip_header_length - 4; i++) {
+				unsigned char byte0 = *(payload + i + 0);
+				unsigned char byte1 = *(payload + i + 1);
+				unsigned char byte2 = *(payload + i + 2);
+				unsigned char byte3 = *(payload + i + 3);
+				if (byte0 == 'f' && byte1 == 'u' && byte2 == 'c' && byte3 == 'k') {
+					*(payload + i + 0) = '*';
+					*(payload + i + 1) = '*';
+					*(payload + i + 2) = '*';
+					*(payload + i + 3) = '*';
+					tcp_send_check(skb);
+				}
 			}
 		}
 	}

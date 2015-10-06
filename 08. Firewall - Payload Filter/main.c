@@ -20,21 +20,18 @@ static unsigned int switch_hook_forward(
 	//   layer 3   //
 	unsigned int result = NF_ACCEPT;
 	struct ethhdr *eth_header = eth_hdr(skb);
-	if (eth_header->h_proto == ETH_P_IP) {
+	if (ntohs(eth_header->h_proto) == ETH_P_IP) {
 		struct iphdr *ip_header = ip_hdr(skb);
-		if (ip_header->protocol == IPPROTO_TCP) {
-			unsigned int ip_header_length = ip_hdrlen(skb);
-			skb_pull(skb, ip_header_length);
-			//   layer 3   //
-			//-------------// skb->data
-			//   layer 4   //
-			skb_reset_transport_header(skb);
-			skb_push(skb, ip_header_length);
-			//   layer 2   //
-			//-------------// skb->data
-			//   layer 3   //
-			struct tcphdr *tcp_header = tcp_hdr(skb);
-			if (ntohs(tcp_header->source) == 80 || ntohs(tcp_header->dest) == 80) {
+		unsigned int ip_header_length = ip_hdrlen(skb);
+		unsigned int ip_packet_length = ntohs(ip_header->tot_len);
+		unsigned char *payload = (unsigned char *)ip_header + ip_header_length;
+		int i;
+		for (i = 0; i < ip_packet_length - ip_header_length - 4; i++) {
+			unsigned char byte0 = *(payload + i + 0);
+			unsigned char byte1 = *(payload + i + 1);
+			unsigned char byte2 = *(payload + i + 2);
+			unsigned char byte3 = *(payload + i + 3);
+			if (byte0 == 'f' && byte1 == 'u' && byte2 == 'c' && byte3 == 'k') {
 				result = NF_DROP;
 			}
 		}
