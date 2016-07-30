@@ -10,3 +10,6 @@ http://www.slideshare.net/erinus/network-device-development-part-3-firewall-102-
 <br>
 Part 4: Firewall 103 ~ Protocol Filter & Payload Filter & Payload Modifier<br>
 http://www.slideshare.net/erinus/network-device-development-part-4-firewall-103-protocol-filter-payload-filter-payload-modifier<br>
+<br>
+Part 5: Firewall 104 ~ Packet Splitter<br>
+http://www.slideshare.net/erinus/network-device-development-part-5-firewall-104-protocol-splitter<br>
